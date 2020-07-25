@@ -1,3 +1,0 @@
-class InvalidFileError(Exception): pass
-
-
