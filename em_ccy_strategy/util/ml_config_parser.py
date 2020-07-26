@@ -27,18 +27,14 @@ class MLConfigParser(object):
     def output_dir(self):
         return self._inifile.get('Base','OutputDir')
 
-    #@property
-    #def input_file(self):
-    #    return self._inifile.get('Base','InputFile')
-
     @property
     def feature_file(self):
         return self._inifile.get('Base','FeatureFile')
     
-    #@property
-    #def feature_base_file(self):
-    #    return self._inifile.get('Base','FeatureBaseFile')
-    
+    @property
+    def fc_label_file(self):
+        return self._inifile.get('Base','FCLabelFile')
+
     @property
     def feature_list_file(self):
         return self._inifile.get('Base','FeatureListFile')

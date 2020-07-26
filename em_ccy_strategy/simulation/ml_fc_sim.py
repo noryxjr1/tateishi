@@ -8,6 +8,7 @@ import numpy as np
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from tqdm import tqdm
+import shutil
 
 from util.ml_config_parser import MLConfigParser
 import algorithm as alg
@@ -49,6 +50,18 @@ def calc_training_result(algo, training_data, training_label, value_date):
     
     return summary_df
 
+
+def create_label(input_file_name):
+    '''return label dataframe (Return column) for back test.
+       Parameters
+       ----------
+       input_file_name: csv file of weekly data which has weekly date column
+    '''
+    input_df = pd.DataFrame(pd.read_csv(input_file_name))
+    input_df['ValueDate'] = pd.to_datetime(input_df.ValueDate.values)#cf.convert_date_format(input_df.ValueDate)
+    return pd.DataFrame(input_df.set_index('ValueDate').Return)
+
+
 def main():
     logging.config.fileConfig('./logger_config.ini')
     logger = logging.getLogger("jpbank.quants")
@@ -59,7 +72,7 @@ def main():
         exec_pca = config.exec_pca
         is_regression = config.is_regression
         
-        feature_file_name = os.path.join('input', 'fc_feature.csv')
+        feature_file_name = os.path.join(config.input_dir, config.feature_file)
         output_suffix = datetime.now().strftime('%Y%m%d%H%M%S')     
 
         check_input(feature_file_name)
@@ -86,6 +99,7 @@ def main():
             proba_result_list = []
             ml_algo = algo(IsRegression=is_regression, with_grid_cv=config.with_grid_cv)
             prev_date = None
+            
             for value_date in tqdm(date_list):
                 logger.info("Trainig/Predicting In {0}...".format(value_date))
 
@@ -146,35 +160,46 @@ def main():
         #Result Output Process
         predict_result_df.index.name='ValueDate'
         proba_result_df.index.name='ValueDate'
-        predict_result_df.to_csv('./output/predict_result_{0}_{1}_{2}_{3}.csv'\
-                                .format('PCA' if exec_pca else 'NoPCA',
-                                        int(training_month),
-                                        'Reg' if is_regression else 'Class',
-                                        output_suffix), 
-                                  index=False)
+        predict_result_file = 'predict_result_{0}_{1}_{2}_{3}.csv'.format('PCA' if exec_pca else 'NoPCA',
+                                                                          int(training_month),
+                                                                          'Reg' if is_regression else 'Class',
+                                                                          output_suffix)
+        
+        predict_result_df.to_csv(os.path.join(config.output_dir, 
+                                              predict_result_file), 
+                                 index=False)
+        shutil.copy2(os.path.join(config.output_dir, predict_result_file),
+                     os.path.join(config.input_dir, config.fc_label_file))
+
         if not is_regression:
-            proba_result_df.to_csv('./output/proba_result_{0}_{1}_{2}_{3}.csv'\
+            proba_result_df.to_csv(os.path.join(config.output_dir, 'proba_result_{0}_{1}_{2}_{3}.csv')
                                     .format('PCA' if exec_pca else 'NoPCA',
                                             int(training_month),
                                             'Reg' if is_regression else 'Class',
                                             output_suffix), 
-                                      index=False)
-        training_result_df.to_csv('./output/training_result_{0}_{1}_{2}_{3}.csv'\
-                                .format('PCA' if exec_pca else 'NoPCA',
-                                        int(training_month),
-                                        'Reg' if is_regression else 'Class',
-                                        output_suffix), 
-                                  index=False)
-
+                                        index=False)
+        training_result_df.to_csv(os.path.join(config.output_dir, 'training_result_{0}_{1}_{2}_{3}.csv')
+                                    .format('PCA' if exec_pca else 'NoPCA',
+                                            int(training_month),
+                                            'Reg' if is_regression else 'Class',
+                                            output_suffix), 
+                                        index=False)
+    
+        #importance_df.to_csv('./output/importance_{0}_{1}_{2}_{3}.csv'\
+        #                     .format('PCA' if exec_pca else 'No',
+        #                             int(training_month),
+        #                             'Reg' if is_regression else 'Class',
+        #                             output_suffix), 
+        #                     index=True)
         result_manager = ResultManager(PredictedData=predict_result_df,
                                         PredictedLabel=create_label(feature_file_name),
                                         multi_class=True)
-        result_manager.create_result().to_csv('./output/summary_{0}_{1}_{2}_{3}.csv'\
+        result_manager.create_result().to_csv('./output/summary_{0}_{1}_{2}_{3}.csv'
                                                 .format('PCA' if exec_pca else 'NoPCA',
                                                         int(training_month),
                                                         'Reg' if is_regression else 'Class',
                                                         output_suffix), 
-                                              index=False)
+                                                index=False)
     except:
         import traceback
         logger.error(traceback.format_exc())

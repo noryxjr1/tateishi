@@ -27,7 +27,7 @@ class EMCcySim(object):
 
         self._rolls = kwargs.get('rolls', False)
         self._start_date = kwargs.get('start_date', date(2003, 3, 28))
-        self._end_date = kwargs.get('end_date', date(2019, 12, 27))
+        self._end_date = kwargs.get('end_date', date(2020, 7, 24))
 
         self._use_estimated_sign = kwargs.get('use_estimated_sign', False)
         if self._use_estimated_sign:

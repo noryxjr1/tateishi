@@ -11,6 +11,7 @@ from functools import lru_cache
 
 import util
 import util.common_func as cf
+from util.ml_config_parser import MLConfigParser
 from simulation.em_ccy_sim_fc import EMCcySim
 
 class FCFactorMaker(object):
@@ -245,6 +246,6 @@ if __name__ == '__main__':
     import logging.config
     logging.config.fileConfig('./logger_config.ini')
     is_weely = True
-
+    config = MLConfigParser()
     factor_maker = FCFactorMaker(TargetCcy=['ZAR', 'MXN'], is_weekly=is_weely)
-    factor_maker.create_feature_vector().to_csv('fc_feature.csv')
+    factor_maker.create_feature_vector().to_csv(os.path.join(config.input_dir, config.feature_file))
