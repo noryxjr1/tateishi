@@ -27,21 +27,17 @@ class EMCcySim(object):
 
         self._rolls = kwargs.get('rolls', False)
         self._start_date = kwargs.get('start_date', date(2003, 3, 28))
-        self._end_date = kwargs.get('end_date', date(2020, 7, 24))
+        self._end_date = kwargs.get('end_date', date.today())
 
         self._use_estimated_sign = kwargs.get('use_estimated_sign', False)
         if self._use_estimated_sign:
-            
             self._fc_label = kwargs.get('fc_label', None)
             assert self._fc_label is not None
-        self._has_indication_diff = kwargs.get('has_indication_diff', True)
 
-        if self._rolls:
-            self._roll_term = kwargs.get('roll_term', 52)
-            self._date_list = cf.create_weekly_datelist(self._start_date + relativedelta(weeks=self._roll_term), 
-                                                        self._end_date)
-        else:
-            self._date_list = cf.create_weekly_datelist(self._start_date, self._end_date)
+        self._has_indication_diff = kwargs.get('has_indication_diff', True)#Chicago:True/GS:False
+
+        self._roll_term = kwargs.get('roll_term', 52)
+        self._date_list = cf.create_weekly_datelist(self._start_date, self._end_date)
 
         self._price_tickers = kwargs.get('price_tickers',
                                          ['USDZAR Index', 'USDMXN Index'])
@@ -92,10 +88,11 @@ class EMCcySim(object):
 
     def _get_price(self, ticker_list):
         self._logger.info('Getting Data From Master Data...')
-        return self._input_data.query("@self._start_date <= ValueDate <= @self._end_date & Ticker in @ticker_list").pivot(index='ValueDate',
-                                                            columns='Ticker',
-                                                            values='Last')\
-                                                     .fillna(method='ffill')
+        start_date = self._start_date -relativedelta(weeks=self._roll_term)
+        return self._input_data.query("""@start_date <= ValueDate <= @self._end_date & Ticker in @ticker_list""").pivot(index='ValueDate',
+                                                                          columns='Ticker',
+                                                                          values='Last')\
+                                                                   .fillna(method='ffill')
     
                                
     def _normalize(self, target_df, end_date):
@@ -106,6 +103,7 @@ class EMCcySim(object):
             df = pd.DataFrame(target_df).query("index <= @end_date")
         mean = df.mean().iloc[0]
         std = df.std(ddof=0).iloc[0]
+        
         return ((df.iloc[-1] - mean) / std).iloc[0]
 
 
@@ -194,7 +192,7 @@ class EMCcySim(object):
                                              for i in range(exp_return_df.shape[0])],
                                             index = exp_return_df.index,
                                             columns = ['best', 'worst'])
-    
+        
         if self._use_estimated_sign:
             sign_df = self._get_estimated_sign(normalized_df[self._fc_tickers[0]], em_prior_tickers)
         else:
@@ -202,7 +200,7 @@ class EMCcySim(object):
                 sign_df = self._get_indicated_sign(normalized_df[self._fc_tickers[0]], em_prior_tickers)
             else:
                 sign_df = self._get_indicated_sign(fc_diff_df[self._fc_tickers[0]], em_prior_tickers)
-            #import pdb;pdb.set_trace()
+            
         self._logger.info("Building Position...")
         #Risk On: Long EM Ccy of Worst Score ->Position: -1(USD Short, EM Long)
         #of Worst
@@ -298,23 +296,14 @@ if __name__ == '__main__':
     logging.config.fileConfig('./logger_config.ini')
     logger = logging.getLogger("jpbank.quants")
     roll_term = 104
-    #start_date = date(2003, 3, 28)
-    start_date = date(2006, 4, 7) - relativedelta(weeks=roll_term + 2)
-    start_date = date(2007, 1, 1) - relativedelta(weeks=roll_term + 2)
-    end_date = date.today()#date(2019, 12, 27)
+    #start_date = date(2006, 4, 7) - relativedelta(weeks=roll_term + 2)
+    start_date = date(2005, 4, 1) - relativedelta(weeks=roll_term + 2)
+    end_date = date(2020, 3, 27)
 
     price_tickers = ['USDZAR Index', 'USDMXN Index']
     rate_tickers = ['GSAB2YR Index', 'GMXN02YR Index']
     fwd_tickers = ['USDZAR1W BGN Curncy', 'USDMXN1W BGN Curncy']
 
-    #price_tickers = ['USDZAR Index', 'USDMXN Index', 'USDTRY Index']
-    #rate_tickers = ['GSAB2YR Index', 'GMXN02YR Index', 'GTRU2YR Index']
-    #fwd_tickers = ['USDZAR1W BGN Curncy', 'USDMXN1W BGN Curncy', 'USDTRY1W BGN Curncy']
-    import os
-    #exp_return_file = os.path.join('input', 'em_ccy_expected_return_dnn_20203.csv')
-    #fc_label = pd.read_csv(os.path.join('input', 'fc_label_hgb.csv'))
-    #fc_label = cf.convert_date_format(fc_label)
-    #fc_label.set_index('ValueDate', inplace=True)
     em_ccy_sim = EMCcySim(start_date=start_date, end_date=end_date, 
                           rolls=True,
                           roll_term=roll_term,
