@@ -184,13 +184,7 @@ def main():
                                             'Reg' if is_regression else 'Class',
                                             output_suffix), 
                                         index=False)
-    
-        #importance_df.to_csv('./output/importance_{0}_{1}_{2}_{3}.csv'\
-        #                     .format('PCA' if exec_pca else 'No',
-        #                             int(training_month),
-        #                             'Reg' if is_regression else 'Class',
-        #                             output_suffix), 
-        #                     index=True)
+
         result_manager = ResultManager(PredictedData=predict_result_df,
                                         PredictedLabel=create_label(feature_file_name),
                                         multi_class=True)
