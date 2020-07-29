@@ -44,7 +44,7 @@ def calc_training_result(algo, training_data, training_label, value_date):
     
     result_manager = ResultManager(PredictedData=training_result_df,
                                    PredictedLabel=training_label.loc[training_result_df.index],
-                                   multi_class=True)
+                                   multi_class=False)
     summary_df = result_manager.create_result(type='Training')
     summary_df['ValueDate'] = value_date
     
@@ -82,8 +82,8 @@ def main():
                                       training_month)
     
         algorithm_list = [
-                          alg.ML_DNN,
-                          #alg.ML_CNN,
+                          #alg.ML_DNN,
+                          alg.ML_CNN,
                           #alg.ML_RNN,
                           #alg.ML_LSTM,
                           #alg.ML_GRU,
@@ -135,8 +135,8 @@ def main():
                                           ml_algo.__class__.__name__,
                                           ml_algo.predict_one(feature_manager.predict_data)])
                 
-                proba_result_list.append([value_date, ml_algo.__class__.__name__]
-                                          +ml_algo.predict_one_proba(feature_manager.predict_data))
+                #proba_result_list.append([value_date, ml_algo.__class__.__name__]
+                #                          +ml_algo.predict_one_proba(feature_manager.predict_data))
                 
                 #Post Process for each week
                 feature_manager.dispose()
@@ -149,17 +149,17 @@ def main():
                                                   columns=['ValueDate',
                                                           'Algorithm',
                                                           'Predict']))
-            if not is_regression:
-                proba_result_df = proba_result_df.append(
-                                        pd.DataFrame(proba_result_list,
-                                                      index=date_list, 
-                                                      columns=['ValueDate',
-                                                              'Algorithm',
-                                                              'DownProbability',
-                                                              'UpProbability']))
+            #if not is_regression:
+            #    proba_result_df = proba_result_df.append(
+            #                            pd.DataFrame(proba_result_list,
+            #                                          index=date_list, 
+            #                                          columns=['ValueDate',
+            #                                                  'Algorithm',
+            #                                                  'DownProbability',
+            #                                                  'UpProbability']))
         #Result Output Process
         predict_result_df.index.name='ValueDate'
-        proba_result_df.index.name='ValueDate'
+        #proba_result_df.index.name='ValueDate'
         predict_result_file = 'predict_result_{0}_{1}_{2}_{3}.csv'.format('PCA' if exec_pca else 'NoPCA',
                                                                           int(training_month),
                                                                           'Reg' if is_regression else 'Class',
@@ -186,8 +186,8 @@ def main():
                                         index=False)
 
         result_manager = ResultManager(PredictedData=predict_result_df,
-                                        PredictedLabel=create_label(feature_file_name),
-                                        multi_class=True)
+                                       PredictedLabel=create_label(feature_file_name),
+                                       multi_class=False)
         result_manager.create_result().to_csv('./output/summary_{0}_{1}_{2}_{3}.csv'
                                                 .format('PCA' if exec_pca else 'NoPCA',
                                                         int(training_month),

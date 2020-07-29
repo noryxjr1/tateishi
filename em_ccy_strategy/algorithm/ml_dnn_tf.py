@@ -30,7 +30,8 @@ class ML_DNN_TF(ML_Base):
         self._params = {'out_dim1': kwargs.get('out_dim1',32),
                         'out_dim2': kwargs.get('out_dim2',32),
                         #'label_dim': kwargs.get('label_dim',2),
-                        'optimizer': kwargs.get('optimizer','adam'),
+                        #'optimizer': kwargs.get('optimizer','adam'),
+                        'optimizer': kwargs.get('optimizer','rmsprop'),
                         'dropout1': kwargs.get('dropout1',0.4),
                         'dropout2': kwargs.get('dropout2',0.3),
                         'activation': kwargs.get('activation','relu'),
@@ -56,7 +57,7 @@ class ML_DNN_TF(ML_Base):
                                 , np.array(training_label)
                                 , callbacks=[EarlyStopping(monitor='loss'
                                                             ,patience=100
-                                                            ,verbose=0),
+                                                            ,verbose=2),
                                             #ModelCheckpoint(model_file_path, 
                                             #                save_best_only=True),
                                             #TensorBoard(log_dir='logs')
@@ -64,7 +65,7 @@ class ML_DNN_TF(ML_Base):
                                 , batch_size=self._batch_size
                                 , epochs=self._nb_epoch
                                 , validation_split = 0.2
-                                , verbose=0
+                                , verbose=2
                                 )
         
         #import matplotlib.pyplot as plt
@@ -106,7 +107,8 @@ class ML_DNN_TF(ML_Base):
             loss_func = 'mean_squared_error'
             last_output_dim = 1
         else:
-            loss_func = 'sparse_categorical_crossentropy'
+            #loss_func = 'sparse_categorical_crossentropy'
+            loss_func = 'categorical_crossentropy'
             last_output_dim = 2
 
         activation1 = Activation(activation, name='activation1')
@@ -116,12 +118,15 @@ class ML_DNN_TF(ML_Base):
         do2 = Dropout(dropout2, name='dropout2')
         #do3 = Dropout(dropout3, name='dropout3')
         
-        layer1 = Dense(name='layer1', units=out_dim1,
-                        kernel_initializer='glorot_uniform',
-                        bias_initializer='zeros')
-        layer2 = Dense(name='layer2', units=out_dim2,
-                        kernel_initializer='glorot_uniform',
-                        bias_initializer='zeros')
+        layer1 = Dense(name='layer1', units=out_dim1)
+        layer2 = Dense(name='layer2', units=out_dim2)
+
+        #layer1 = Dense(name='layer1', units=out_dim1,
+        #                kernel_initializer='glorot_uniform',
+        #                bias_initializer='zeros')
+        #layer2 = Dense(name='layer2', units=out_dim2,
+        #                kernel_initializer='glorot_uniform',
+        #                bias_initializer='zeros')
         # layer3 = Dense(name='layer3', units=out_dim3,
         #                 kernel_initializer='glorot_uniform',
         #                 bias_initializer='zeros')
