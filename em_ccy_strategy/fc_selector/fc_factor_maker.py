@@ -148,7 +148,7 @@ class FCFactorMaker(object):
                                            for ticker in self._label_tickers],
                                           index = self._label_tickers,
                                           columns = sim_return_df.index).T
-
+        modified_return_df.to_csv('mod_return.csv')
         return pd.DataFrame([0 if modified_return_df.iloc[i][self._label_tickers[0]] 
                                 >= modified_return_df.iloc[i][self._label_tickers[1]] 
                                 else 1

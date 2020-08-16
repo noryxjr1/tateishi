@@ -21,7 +21,7 @@ class ML_CNN_TF(ML_Base):
         super().__init__(**kwargs)
         self._logger.info("{0} initializing...".format(self.__class__.__name__))
         self._maxlen = kwargs.get('maxlen', 5)
-        self._nb_epoch = kwargs.get('nb_epoch',150)
+        self._nb_epoch = kwargs.get('nb_epoch',1000)
         self._batch_size = kwargs.get('batch_size',100)
         self._with_functional_api = kwargs.get('with_functional_api', True)
         self._params = {}
@@ -49,10 +49,11 @@ class ML_CNN_TF(ML_Base):
                                , callbacks=[EarlyStopping(monitor='val_loss'
                                                           #, min_delta=0
                                                           , patience=1000
-                                                          , verbose=1
+                                                          , verbose=0
                                                           , mode='auto')]
                                , batch_size=self._batch_size
-                               , nb_epoch=self._nb_epoch
+                               , epochs=self._nb_epoch
+                               , verbose=0
                                , validation_split = 0.2)
         #import matplotlib.pyplot as plt
         #plt.plot(hist.history['loss'])

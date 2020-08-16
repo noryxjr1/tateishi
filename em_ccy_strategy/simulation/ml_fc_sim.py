@@ -82,7 +82,7 @@ def main():
                                       training_month)
     
         algorithm_list = [
-                          #alg.ML_DNN,
+                          alg.ML_DNN,
                           alg.ML_CNN,
                           #alg.ML_RNN,
                           #alg.ML_LSTM,

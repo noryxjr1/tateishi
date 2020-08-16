@@ -25,7 +25,7 @@ class ML_DNN_TF(ML_Base):
         self._config = MLConfigParser()
         self._with_functional_api = kwargs.get('with_functional_api', False)
 
-        self._nb_epoch = kwargs.get('nb_epoch',10)
+        self._nb_epoch = kwargs.get('nb_epoch',1000)
         self._batch_size = kwargs.get('batch_size', 30)
         self._params = {'out_dim1': kwargs.get('out_dim1',32),
                         'out_dim2': kwargs.get('out_dim2',32),
@@ -44,8 +44,6 @@ class ML_DNN_TF(ML_Base):
         
         seed = 1234
         np.random.seed(seed)
-        #if self._config.parameter_tuning:
-        #    os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
         
         model_file_path = '{model_name}_{value_date}.h5'.format(model_name=self.__class__.__name__,
                                                                 value_date=training_data.index[-1].strftime('%Y%m%d'))
@@ -55,9 +53,7 @@ class ML_DNN_TF(ML_Base):
         self._model = self._create_model(input_dim=training_data.shape[1], **self._params)
         hist = self._model.fit(np.array(training_data)
                                 , np.array(training_label)
-                                , callbacks=[EarlyStopping(monitor='loss'
-                                                            ,patience=100
-                                                            ,verbose=2),
+                                , callbacks=[EarlyStopping(monitor='val_loss', patience=0, verbose=0, mode='auto'),
                                             #ModelCheckpoint(model_file_path, 
                                             #                save_best_only=True),
                                             #TensorBoard(log_dir='logs')
@@ -65,7 +61,7 @@ class ML_DNN_TF(ML_Base):
                                 , batch_size=self._batch_size
                                 , epochs=self._nb_epoch
                                 , validation_split = 0.2
-                                , verbose=2
+                                , verbose=0
                                 )
         
         #import matplotlib.pyplot as plt
@@ -80,7 +76,9 @@ class ML_DNN_TF(ML_Base):
             return float(self._model.predict(test_data))
         else:
             predicted = self._model.predict(test_data)
-            return 0 if predicted[0][0] > predicted[0][1] else 1
+            #import pdb;pdb.set_trace()
+            #return 0 if predicted[0][0] > predicted[0][1] else 1
+            return 0 if predicted[0] < 0.5 else 1
 
     def predict(self, test_data):
         if type(test_data) != np.array:
@@ -90,7 +88,9 @@ class ML_DNN_TF(ML_Base):
             return super().predict(test_data)
         else:
             pred_result = self._model.predict(test_data)
-            return [0 if pred_result[i][0] > pred_result[i][1] else 1 for i in range(len(pred_result))]
+            #import pdb;pdb.set_trace()
+            #return [0 if pred_result[i][0] > pred_result[i][1] else 1 for i in range(len(pred_result))]
+            return [0 if pred_result[i] < 0.5 else 1 for i in range(len(pred_result))]
 
     
     def _create_model(self, 
@@ -109,7 +109,7 @@ class ML_DNN_TF(ML_Base):
         else:
             #loss_func = 'sparse_categorical_crossentropy'
             loss_func = 'categorical_crossentropy'
-            last_output_dim = 2
+            last_output_dim = 1
 
         activation1 = Activation(activation, name='activation1')
         activation2 = Activation(activation, name='activation2')

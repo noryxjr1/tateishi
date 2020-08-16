@@ -24,21 +24,12 @@ class EMCcySim(object):
         self._input_data = cf.convert_date_format(pd.read_csv(os.path.join(os.path.dirname(__file__), '../input', 'all_input_data.csv')))
         self._fc_threshold = kwargs.get('fc_threshold', 0)
         self._includes_swap = kwargs.get('includes_swap', True)
-
         self._rolls = kwargs.get('rolls', False)
         self._start_date = kwargs.get('start_date', date(2003, 3, 28))
         self._end_date = kwargs.get('end_date', date.today())
-
-        self._use_estimated_sign = kwargs.get('use_estimated_sign', False)
-        if self._use_estimated_sign:
-            self._fc_label = kwargs.get('fc_label', None)
-            assert self._fc_label is not None
-
         self._has_indication_diff = kwargs.get('has_indication_diff', True)#Chicago:True/GS:False
-
         self._roll_term = kwargs.get('roll_term', 52)
         self._date_list = cf.create_weekly_datelist(self._start_date, self._end_date)
-
         self._price_tickers = kwargs.get('price_tickers',
                                          ['USDZAR Index', 'USDMXN Index'])
         self._em_rate_tickers = kwargs.get('em_rate_tickers',
@@ -50,7 +41,6 @@ class EMCcySim(object):
 
         self._em_price_rate_dic, self._em_rate_price_dic = self._create_ticker_dic(self._price_tickers, self._em_rate_tickers)
         self._em_price_fwd_dic, self._em_fwd_price_dic = self._create_ticker_dic(self._price_tickers, self._em_fwd_tickers)
-
         self._exp_return_file = kwargs.get('exp_return_file', None)
         self._base_rate_ticker = kwargs.get('base_rate_ticker', 'USGG2YR Index')
         self._fc_tickers = kwargs.get('fc_tickers', ['NFCIINDX Index', 'GSUSFCI Index'])
@@ -126,32 +116,6 @@ class EMCcySim(object):
                             columns = price_tickers)
 
 
-    def _get_estimated_sign(self, fc_df, em_prior_tickers):
-        #Chicago + GS
-        fc_df = pd.merge(pd.DataFrame([False] + fc_df.iloc[:-1].apply(lambda x: True if x < self._fc_threshold else False).tolist(),
-                                            index = fc_df.index,
-                                            columns = [self._fc_tickers[0]]),
-                         pd.DataFrame(fc_df.apply(lambda x: True if x < self._fc_threshold else False).tolist(),
-                                            index = fc_df.index,
-                                            columns = [self._fc_tickers[1]]),
-                         right_index=True, left_index=True)
-        norm_fc_list = []
-        for i in range(fc_df.shape[0]):
-            if fc_df.index[i] < self._fc_label.index.min() or fc_df.index[i] > self._fc_label.index.max():
-                norm_fc_list.append(fc_df[self._fc_tickers[0]].iloc[i])
-            else:
-                label_index =  int(self._fc_label.loc[fc_df.index[i]].iloc[0])
-                if label_index == 2:
-                    norm_fc_list.append(np.nan)
-                else:
-                    norm_fc_list.append(fc_df[self._fc_tickers[label_index]].iloc[i])
-
-        #sign_df = pd.merge(em_prior_tickers, fc_prior_tickers, right_index=True, left_index=True)
-        return pd.merge(em_prior_tickers, 
-                        pd.DataFrame(norm_fc_list, index=fc_df.index, columns=['fc_priority']), 
-                        right_index=True, left_index=True)
-
-
     def _get_indicated_sign(self, fc_df, em_prior_tickers):
         if self._has_indication_diff:#one week delay, like Chicago FC
             fc_prior_tickers = pd.DataFrame([False] + fc_df.iloc[:-1]\
@@ -168,7 +132,7 @@ class EMCcySim(object):
 
     def simulate(self):
         self._logger.info("Simulation Starting...")
-        rate_return_df = self._calc_return(self._price_df[self._em_rate_tickers].loc[self._date_list])
+        rate_return_df = self._calc_return(self._price_df[self._em_rate_tickers].reindex(self._date_list).fillna(method='ffill').fillna(method='bfill'))
         fc_diff_df = self._price_df[self._fc_tickers].loc[self._date_list].diff().dropna(axis=0)
         src_return_df = pd.merge(rate_return_df, fc_diff_df, right_index=True, left_index=True)
         normalized_df = pd.DataFrame([[self._normalize(src_return_df[ticker], value_date) 
@@ -176,15 +140,16 @@ class EMCcySim(object):
                                        for ticker in self._em_rate_tickers + self._fc_tickers],
                                       index = self._em_rate_tickers + self._fc_tickers, 
                                       columns = self._date_list[1:]).T.dropna(axis=0)
+        
         if self._exp_return_file is None:
-            self._logger.info("Selecting EM Currency Tickers usgin Rate")
+            self._logger.info("Selecting EM Currency Tickers using Rate")
             em_prior_tickers = pd.DataFrame([(self._em_rate_price_dic[normalized_df[self._em_rate_tickers].iloc[i].idxmax()], 
                                               self._em_rate_price_dic[normalized_df[self._em_rate_tickers].iloc[i].idxmin()])
                                              for i in range(normalized_df.shape[0])],
                                             index = normalized_df.index,
                                             columns = ['best', 'worst'])
         else:
-            self._logger.info("Selecting EM Currency Tickers usgin Expected Return")
+            self._logger.info("Selecting EM Currency Tickers using Expected Return")
             exp_return_df = pd.read_csv(self._exp_return_file)
             exp_return_df = cf.convert_date_format(exp_return_df, target_col='ValueDate').set_index('ValueDate')
             em_prior_tickers = pd.DataFrame([(exp_return_df[self._price_tickers].iloc[i].idxmax(), 
@@ -193,14 +158,11 @@ class EMCcySim(object):
                                             index = exp_return_df.index,
                                             columns = ['best', 'worst'])
         
-        if self._use_estimated_sign:
-            sign_df = self._get_estimated_sign(normalized_df[self._fc_tickers[0]], em_prior_tickers)
+        if self._has_indication_diff:
+            sign_df = self._get_indicated_sign(normalized_df[self._fc_tickers[0]], em_prior_tickers)
         else:
-            if self._has_indication_diff:
-                sign_df = self._get_indicated_sign(normalized_df[self._fc_tickers[0]], em_prior_tickers)
-            else:
-                sign_df = self._get_indicated_sign(fc_diff_df[self._fc_tickers[0]], em_prior_tickers)
-            
+            sign_df = self._get_indicated_sign(fc_diff_df[self._fc_tickers[0]], em_prior_tickers)
+                
         self._logger.info("Building Position...")
         #Risk On: Long EM Ccy of Worst Score ->Position: -1(USD Short, EM Long)
         #of Worst
@@ -229,6 +191,7 @@ class EMCcySim(object):
                                          for i in range(position_df.shape[0] - 1)],
                                         index = position_df.index[:-1],
                                         columns=['return'])
+        
         return_series_df.index.name = 'ValueDate'
         return_series_df['cum_return'] = return_series_df['return'].cumsum()
         
@@ -258,6 +221,7 @@ class EMCcySim(object):
         perform_measurer.create_result_summary(self._return_series_df)[['return']]\
             .to_csv(os.path.join('output','{0}_em_performance_{1}.csv'.format(output_prefix, output_suffix)))
         
+        self._fc_normalized_df.to_csv(os.path.join('output','{0}_fc_normalized_{1}.csv'.format(output_prefix, output_suffix)))
         self._logger.info("Output Process Completed.")
 
 
@@ -303,6 +267,9 @@ if __name__ == '__main__':
     price_tickers = ['USDZAR Index', 'USDMXN Index']
     rate_tickers = ['GSAB2YR Index', 'GMXN02YR Index']
     fwd_tickers = ['USDZAR1W BGN Curncy', 'USDMXN1W BGN Curncy']
+    fc_label = pd.read_csv('./input/fc_label_test.csv').query("Algorithm == 'ML_DNN_TF'")[['ValueDate', 'Predict']]
+    fc_label = cf.convert_date_format(fc_label)
+    fc_label.set_index('ValueDate', inplace=True)
 
     em_ccy_sim = EMCcySim(start_date=start_date, end_date=end_date, 
                           rolls=True,
@@ -311,11 +278,13 @@ if __name__ == '__main__':
                           em_rate_tickers=rate_tickers,
                           em_fwd_tickers=fwd_tickers,
                           #exp_return_file=exp_return_file,
-                          use_estimated_sign=False,
-                          #fc_label=fc_label
-                          #fc_tickers=['GSUSFCI Index'],
+                          #use_estimated_sign=True,
+                          #adjust_return=True,
+                          #fc_label=fc_label,
+                          fc_tickers=['GSUSFCI Index'],
                           #fc_tickers=['MXEF Index'],
-                          #has_indication_diff=False
+                          fc_threshold = -0.05,
+                          has_indication_diff=False
                           )
     em_ccy_sim.simulate()
     em_ccy_sim.output()
