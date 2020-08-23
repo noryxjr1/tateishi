@@ -83,7 +83,7 @@ def main():
     
         algorithm_list = [
                           alg.ML_DNN,
-                          alg.ML_CNN,
+                          #alg.ML_CNN,
                           #alg.ML_RNN,
                           #alg.ML_LSTM,
                           #alg.ML_GRU,

@@ -6,6 +6,7 @@ from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
 from sklearn.decomposition import PCA, KernelPCA
 from sklearn.feature_selection import SelectKBest, mutual_info_classif
 from sklearn.manifold import Isomap
+from imblearn.over_sampling import RandomOverSampler
 from datetime import date
 import pickle as pkl
 
@@ -78,6 +79,19 @@ class FeatureVectorManager(object):
             return np.array([np.array(self._pred_label)])
 
 
+    def _exec_over_sample(self):
+        max_class = self._training_label.iloc[:, 0].value_counts().argmax()
+        data_count = (self._training_label==max_class).sum()[0]
+        strategy = {0:data_count, 1:data_count}
+        ros = RandomOverSampler(random_state=0, sampling_strategy = strategy)
+        
+        x_train, y_train = ros.fit_resample(self._training_data, self._training_label)
+        #import pdb;pdb.set_trace()
+        #x_train.index = self._training_data.index
+        #y_train.index = self._training_label.index
+
+        return x_train, y_train
+
     def _create_ml_data(self):
         if self._scaler_type == 1:
             scaler = StandardScaler()
@@ -96,6 +110,10 @@ class FeatureVectorManager(object):
         self._training_label = pd.DataFrame(training_label_df,
                                             index=training_label_df.index,
                                             columns=training_label_df.columns)
+
+        self._training_data, self._training_label = self._exec_over_sample()
+
+        positive_count_train = (self._training_label==1)
         if self._maxlen is None:
             pred_data_df = self._feature_vector.query("ValueDate >= @self._pred_start_date \
                                                      & ValueDate <= @self._pred_end_date")

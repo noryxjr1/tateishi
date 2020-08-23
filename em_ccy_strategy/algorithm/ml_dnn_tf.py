@@ -27,8 +27,8 @@ class ML_DNN_TF(ML_Base):
 
         self._nb_epoch = kwargs.get('nb_epoch',1000)
         self._batch_size = kwargs.get('batch_size', 30)
-        self._params = {'out_dim1': kwargs.get('out_dim1',32),
-                        'out_dim2': kwargs.get('out_dim2',32),
+        self._params = {'out_dim1': kwargs.get('out_dim1',64),
+                        'out_dim2': kwargs.get('out_dim2',16),
                         #'label_dim': kwargs.get('label_dim',2),
                         #'optimizer': kwargs.get('optimizer','adam'),
                         'optimizer': kwargs.get('optimizer','rmsprop'),
@@ -36,6 +36,16 @@ class ML_DNN_TF(ML_Base):
                         'dropout2': kwargs.get('dropout2',0.3),
                         'activation': kwargs.get('activation','relu'),
                         }
+
+        #self._params = {'out_dim1': kwargs.get('out_dim1',32),
+        #                'out_dim2': kwargs.get('out_dim2',32),
+        #                #'label_dim': kwargs.get('label_dim',2),
+        #                #'optimizer': kwargs.get('optimizer','adam'),
+        #                'optimizer': kwargs.get('optimizer','rmsprop'),
+        #                'dropout1': kwargs.get('dropout1',0.4),
+        #                'dropout2': kwargs.get('dropout2',0.3),
+        #                'activation': kwargs.get('activation','relu'),
+        #                }
 
         self._logger.info("{0} initialized.".format(self.__class__.__name__))
 
@@ -45,9 +55,9 @@ class ML_DNN_TF(ML_Base):
         seed = 1234
         np.random.seed(seed)
         
-        model_file_path = '{model_name}_{value_date}.h5'.format(model_name=self.__class__.__name__,
-                                                                value_date=training_data.index[-1].strftime('%Y%m%d'))
-        model_file_path = os.path.join('output', 'model', model_file_path)
+        #model_file_path = '{model_name}_{value_date}.h5'.format(model_name=self.__class__.__name__,
+        #                                                        value_date=training_data.index[-1].strftime('%Y%m%d'))
+        #model_file_path = os.path.join('output', 'model', model_file_path)
 
         
         self._model = self._create_model(input_dim=training_data.shape[1], **self._params)

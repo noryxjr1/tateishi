@@ -34,6 +34,14 @@ class EstimatedFCSim(object):
         self._all_fc_label = pd.read_csv(kwargs.get('fc_label',
                                                    os.path.join(self._config.input_dir, 
                                                                 self._config.fc_label_file)))
+        
+        data_list = np.unique(self._all_fc_label.ValueDate).tolist()
+        for i in range(len(self._fc_ticker_list)):
+            self._all_fc_label = self._all_fc_label.append(pd.DataFrame([data_list,
+                                                                         np.repeat(self._fc_ticker_list[i]+'_adj', len(data_list)),
+                                                                         np.repeat(i, len(data_list))],
+                                                                        index = self._all_fc_label.columns).T)
+        
         self._alg_list = np.unique(self._all_fc_label.Algorithm).tolist()
         
         #ToDo: set value from config file or argument
@@ -89,7 +97,7 @@ class EstimatedFCSim(object):
 
     def execute(self):
         return_df, normalized_df = self.execute_normal_fc_sim()
-
+        
         self._logger.info("Calculating Return with Estimated Financial Condition...")
         return_matrix = []
         for alg in self._alg_list:
@@ -112,7 +120,9 @@ class EstimatedFCSim(object):
                     return_list.append(return_df[self._fc_ticker_list[0]].loc[value_date])
 
             return_matrix.append(return_list)
-        self._all_return_df = pd.DataFrame(return_matrix, index=self._alg_list, columns = return_df.index).T
+        
+        self._all_return_df = pd.merge(pd.DataFrame(return_matrix, index=self._alg_list, columns = return_df.index).T,
+                                       return_df, right_index = True, left_index = True)
         self._logger.info("Return Calculation Completed.")
 
     def output_result(self):
